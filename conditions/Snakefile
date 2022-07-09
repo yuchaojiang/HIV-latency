@@ -1,0 +1,112 @@
+SAMPLES = ["DMSO", "iBET151", "Prostrat", "SAHA"]
+ASSAYS = ["rna", "atac"]
+
+rule all:
+    input:
+        expand("derived_data/linked_gene/linked.gene.{sample}.csv", sample = SAMPLES),
+	expand("derived_data/linked_tf/linked.TF.{sample}.csv", sample = SAMPLES),
+        expand("figures/hockeystickplot_hiv_{assay}_per_cond.pdf", assay = ASSAYS),
+        "derived_data/percent.cells.csv",
+        "derived_data/percent.cells.per.gene.csv",
+	"derived_data/percent.cells.per.gene.range.csv",
+        "derived_data/percent.exp.range.csv"
+
+rule preprocess:
+    input:
+        h5 = "../source_data/GRCh38_pHR_{sample}_filtered_feature_bc_matrix.h5",
+        gtf = "../source_data/genes.gtf",
+        frag = "../source_data/GRCh38_pHR_{sample}_atac_fragments.tsv.gz",
+    output:
+        seurat = "derived_data/seurat/seurat.{sample}.rds",
+	fig = "figures/vln_qc_{sample}.pdf"
+    shell:
+        "Rscript preprocess.R {input.h5} {input.gtf} {input.frag}"
+	" {output.seurat} {output.fig}"
+
+rule get_hiv_rna:
+    input:
+        "derived_data/seurat/seurat.{sample}.rds"
+    output:
+        "derived_data/hiv_rna/hiv.rna.{sample}.rds"
+    shell:
+        "Rscript get_hiv_rna.R {input} {output}"
+
+rule get_hiv_atac:
+    input:
+        h5 = "../source_data/GRCh38_pHR_{sample}_filtered_feature_bc_matrix.h5",
+        gtf = "../source_data/genes.gtf",
+        frag = "../source_data/GRCh38_pHR_{sample}_atac_fragments.tsv.gz",
+        seurat = "derived_data/seurat/seurat.{sample}.rds"
+    output:
+        df = "derived_data/hiv_atac/hiv.atac.{sample}.rds",
+	seurat = "derived_data/seurat_hiv_atac/seurat.hiv.atac.{sample}.rds"
+    shell:
+        "Rscript get_hiv_atac.R {input.h5} {input.gtf} {input.frag} {input.seurat}"
+        " {output.df} {output.seurat}"
+
+rule get_linked_gene_per_cond:
+    input:
+        rna = "derived_data/hiv_rna/hiv.rna.{sample}.rds",
+        seurat = "derived_data/seurat/seurat.{sample}.rds",
+    output: 
+        csv = "derived_data/linked_gene/linked.gene.{sample}.csv",
+	hist = "figures/hist_pval_linked_gene_{sample}.pdf",
+        scatter = "figures/scatter_linked_gene_{sample}.pdf"
+    shell:
+        "Rscript get_linked_gene_per_cond.R {input.rna} {input.seurat}"
+        " {output.csv} {output.hist} {output.scatter}"
+
+rule run_chromvar:
+    input:
+        "derived_data/seurat/seurat.{sample}.rds"
+    output:
+        motif = "derived_data/motif/motif.obj.{sample}.rds",
+        chromvar = "derived_data/chromvar/chromvar.{sample}.rds"
+    shell:
+        "Rscript run_chromvar.R {input} {output.motif} {output.chromvar}"
+
+rule get_linked_tf_per_cond:
+    input:
+        rna = "derived_data/hiv_rna/hiv.rna.{sample}.rds",
+        motif = "derived_data/motif/motif.obj.{sample}.rds",
+        chromvar = "derived_data/chromvar/chromvar.{sample}.rds"
+    output: 
+        csv = "derived_data/linked_tf/linked.TF.{sample}.csv",
+	hist = "figures/hist_pval_linked_TF_{sample}.pdf",
+        scatter = "figures/scatter_linked_TF_{sample}.pdf"
+    shell:
+        "Rscript get_linked_tf_per_cond.R {input.rna} {input.motif} {input.chromvar}"
+        " {output.csv} {output.hist} {output.scatter}"
+    
+rule plot_hiv_per_cond:
+    input:
+        expand("derived_data/hiv_{assay}/hiv.{assay}.{sample}.rds", assay = ASSAYS, sample = SAMPLES)
+    output:	
+        expand("figures/hockeystickplot_hiv_{assay}_per_cond.pdf", assay = ASSAYS)
+    shell:
+        "Rscript plot_hiv_per_cond.R"
+
+rule get_percent_cells:
+    input:
+        expand("derived_data/hiv_rna/hiv.rna.{sample}.rds", sample = SAMPLES)
+    output:	
+        "derived_data/percent.cells.csv"
+    shell:
+        "Rscript get_percent_cells.R"
+
+rule get_percent_cells_per_gene:
+    input:
+        expand("derived_data/seurat/seurat.{sample}.rds", sample = SAMPLES)
+    output:	
+        "derived_data/percent.cells.per.gene.csv",
+	"derived_data/percent.cells.per.gene.range.csv"
+    shell:
+        "Rscript get_percent_cells_per_gene.R"
+
+rule get_hiv_stats:
+    input:
+        expand("derived_data/hiv_rna/hiv.rna.{sample}.rds", sample = SAMPLES)
+    output:	
+        "derived_data/percent.exp.range.csv"
+    shell:
+        "Rscript get_hiv_stats.R"
