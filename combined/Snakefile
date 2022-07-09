@@ -1,0 +1,53 @@
+SAMPLES = ["DMSO", "iBET151", "Prostrat", "SAHA"]
+
+rule all:
+    input:
+        "figures/paired_for_tfs.pdf",
+	"derived_data/mat.transformed.pval.tf.rds",
+        "figures/paired_for_genes.pdf",
+	"derived_data/mat.transformed.pval.gene.rds",
+        "figures/scatter_selected_TF.pdf",
+        "figures/scatter_selected_gene.pdf"
+
+rule plot_selected_gene:
+    input:
+        "derived_data/hiv_predict.rds",
+ 	expand("derived_data/seurat.{sample}.rds", sample = SAMPLES),
+ 	expand("derived_data/hiv.rna.{sample}.rds", sample = SAMPLES)
+    output:
+        "figures/scatter_selected_gene.pdf"
+    shell:
+        "Rscript plot_selected_gene.R"
+
+rule plot_selected_tf:
+    input:
+        "derived_data/hiv_predict.rds",
+        "derived_data/hiv_chromvar.rds",
+        expand("derived_data/hiv.rna.{sample}.rds", sample = SAMPLES),
+        expand("derived_data/motif.obj.DMSO.rds", sample = SAMPLES),
+        expand("derived_data/chromvar.DMSO.rds", sample = SAMPLES)
+    output:	
+        "figures/scatter_selected_TF.pdf"
+    shell:
+        "Rscript plot_selected_tf.R"
+
+rule draw_paired_for_gene:
+    input:
+        "derived_data/linked.gene.csv",
+	expand("derived_data/linked.gene.{sample}.csv", sample = SAMPLES)
+    output:
+        "figures/paired_for_genes.pdf",
+	"derived_data/mat.transformed.pval.gene.rds"
+    shell:
+        "Rscript draw_paired_for_gene.R"
+
+rule draw_paired_for_tf:
+    input:
+        "derived_data/linked.TF.csv",
+	expand("derived_data/linked.TF.{sample}.csv", sample = SAMPLES)
+    output:
+        "figures/paired_for_tfs.pdf",
+	"derived_data/mat.transformed.pval.tf.rds"
+    shell:
+        "Rscript draw_paired_for_tf.R"
+
