@@ -1,0 +1,52 @@
+SAMPLES = ["iBET", "Pros", "SAHA"]
+DIRECTIONS = ["up", "down"]
+
+rule all:
+    input:
+        "figures/umap.pdf",
+        "derived_data/no_hiv.rds",
+        "figures/umap_no_hiv.pdf",
+        "derived_data/anova.csv",
+	"derived_data/tukey.csv",
+        expand("derived_data/motifs.{sample}.{direction}.csv", sample = SAMPLES, direction = DIRECTIONS)
+
+rule plot_umap:
+    input:
+        "derived_data/hiv_predict.rds"
+    output:
+        "figures/umap.pdf"
+    shell:
+        "Rscript plot_umap.R"
+
+rule remove_hiv:
+    input:
+        "derived_data/hiv_predict.rds"
+    output:
+        "derived_data/no_hiv.rds",
+        "figures/umap_no_hiv.pdf"
+    shell:
+        "Rscript remove_hiv.R"
+
+rule compare_means:
+    input:
+        "derived_data/hiv_predict.rds"
+    output:
+        "derived_data/anova.csv",
+	"derived_data/tukey.csv"
+    shell:
+        "Rscript compare_means.R"
+
+rule get_motifs_for_deg:
+    input:
+        seurat = "derived_data/hiv_chromvar.rds",
+	deg = "source_data/supp_table1_{sample}.RNA.markers.{direction}.csv",
+        tr = "../derived_data/transcripts.rds",
+        frag = "../source_data/atac_fragments.tsv.gz"
+    output:
+        "derived_data/motifs.{sample}.{direction}.csv"
+    shell:
+        "Rscript get_motif_for_deg.R {input.seurat} {input.deg}"
+	" {input.tr} {input.frag} {output}"
+
+
+
