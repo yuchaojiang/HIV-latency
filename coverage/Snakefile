@@ -1,0 +1,142 @@
+SAMPLES = ["DMSO", "iBET151", "Prostrat", "SAHA"]
+
+configfile: "config.json"
+
+rule all:
+    input:
+        "figures/cov_rna_cond.pdf",
+        "figures/cov_rna_cluster.pdf"
+
+rule get_barcode:
+    input:
+        seurat = "derived_data/hiv_predict.rds",
+        h5 = "../source_data/GRCh38_pHR_{sample}_filtered_feature_bc_matrix.h5"
+    output:
+        "derived_data/bc_group_{sample}.csv"
+    shell:
+        "Rscript get_barcode.R {input.seurat} {wildcards.sample} {input.h5}"
+	" {output}"
+
+rule filter_bam:
+    input:
+        bam = "../source_data/GRCh38_pHR_{sample}_gex_possorted_bam.bam",
+	index = "../source_data/GRCh38_pHR_{sample}_gex_possorted_bam.bam.bai"
+    output:
+        bam = "derived_data/GRCh38_pHR_{sample}_gex_HIV.bam",
+	index = "derived_data/GRCh38_pHR_{sample}_gex_HIV.bam.bai"
+    shell:
+        """
+        samtools view -b {input.bam} HIV > {output.bam}
+        samtools index {output.bam}
+        """
+
+rule bam_to_sam:
+    input:
+        bam = "derived_data/GRCh38_pHR_{sample}_gex_HIV.bam",
+	index = "derived_data/GRCh38_pHR_{sample}_gex_HIV.bam.bai"
+    output:
+        temp("derived_data/GRCh38_pHR_{sample}_gex_HIV.sam")
+    shell:
+        "samtools view -F 0x4 {input.bam} > {output}"
+
+rule sam_to_frag:
+    input:
+        bc = "derived_data/bc_group_{sample}.csv",
+        sam = "derived_data/GRCh38_pHR_{sample}_gex_HIV.sam"
+    output:
+        "derived_data/GRCh38_pHR_{sample}_gex_HIV_frag.txt"
+    shell:
+        "python sam_to_frag.py {input.bc} {input.sam} {output}"
+
+rule get_bedgraph_for_cond:
+    input:
+        frag = "derived_data/GRCh38_pHR_{sample}_gex_HIV_frag.txt",
+        genome = "../source_data/chrNameLength.txt"
+    output:
+        "derived_data/GRCh38_pHR_{sample}_gex_HIV_bg.txt"
+    shell:
+        "bedtools genomecov -i {input.frag} -bg -g {input.genome} > {output}"
+
+rule get_bg_obj_for_cond:
+    input:
+        "derived_data/hiv_predict.rds",
+	expand("derived_data/GRCh38_pHR_{sample}_gex_HIV_bg.txt", sample = SAMPLES)
+    output:
+        "derived_data/list.bg.rds"
+    shell:
+        "Rscript get_bg.R"
+
+rule get_anno:
+    input:
+        "derived_data/transcripts.rds"
+    output:
+        "derived_data/bed.anno.rds"
+    shell:
+        "Rscript get_anno.R"
+
+rule get_peak:
+    input:
+        "derived_data/hiv_predict.rds"
+    output:
+        "derived_data/bed.peaks.rds"
+    shell:
+        "Rscript get_peak.R"
+
+rule plot_coverage_for_cond:
+    input:
+        bg = "derived_data/list.bg.rds",
+	anno = "derived_data/bed.anno.rds",
+	peak = "derived_data/bed.peaks.rds"
+    output:
+        "figures/cov_rna_cond.pdf"
+    shell:
+        "Rscript plot_coverage.R {input.bg} {input.anno} {input.peak}"
+	" {output}"
+
+rule combine_frag:
+    input:
+      	expand("derived_data/GRCh38_pHR_{sample}_gex_HIV_frag.txt", sample = SAMPLES)
+    output:
+        "derived_data/frag_combined_filtered.txt"    
+    shell:
+        "Rscript combine_frag.R"
+
+rule split_frag_for_cluster:
+    input:
+        frag = "derived_data/frag_combined_filtered.txt",
+	seurat = "derived_data/hiv_predict.rds"
+    output:
+        "derived_data/frag_cluster_{clust}.txt"
+    shell:
+        "Rscript split_frag.R {input.frag} {input.seurat} {wildcards.clust} {output}"
+
+rule get_bedgraph_for_cluster:
+    input:
+        frag = "derived_data/frag_cluster_{clust}.txt",
+	genome = "../source_data/chrNameLength.txt"
+    output:
+        "derived_data/bg_cluster_{clust}.txt"
+    shell:
+        "bedtools genomecov -i {input.frag} -bg -g {input.genome} >"
+        " {output}"
+
+rule get_bg_obj_for_cluster:
+    input:
+        seurat = "derived_data/hiv_predict.rds",
+	bg = expand("derived_data/bg_cluster_{clust}.txt", clust = config["clust"])
+    output:
+        "derived_data/list.bg.cluster.rds"
+    shell:
+        "Rscript get_bg_cluster.R {input.seurat} {output} {input.bg}"
+
+rule plot_coverage_for_cluster:
+    input:
+        "derived_data/list.bg.cluster.rds",
+        "derived_data/bed.anno.rds",
+        "derived_data/bed.peaks.rds"
+    output:
+        "figures/cov_rna_cluster.pdf"
+    shell:
+        "Rscript plot_coverage_cluster.R"
+
+
