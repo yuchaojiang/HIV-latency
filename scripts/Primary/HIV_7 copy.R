@@ -1,5 +1,3 @@
-setwd("/pine/scr/m/w/mwen/")
-
 library(Seurat)
 library(Signac)
 library(EnsDb.Hsapiens.v86)
@@ -274,8 +272,7 @@ pdf("pdf/five/figure4.pdf",width = 5, height = 5)
   
   dev.off()
   
-  
-  setwd("/Users/mwen/Documents/Dissertation/HIV/HIV1/downsample/")
+
   linked.TF <- read.csv('linkage_analysis_output_wm/linked.TF.csv')
   linked.gene <- read.csv('linkage_analysis_output_wm/linked.gene.csv')
   linked.peak <- read.table('linkage_analysis_output_wm/linked.peak.output.txt', header = T)

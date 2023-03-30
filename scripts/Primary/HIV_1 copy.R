@@ -1,4 +1,3 @@
-setwd("/Users/mwen/Documents/Dissertation/HIV/HIV2/")
 
 library(Seurat)
 library(Signac)

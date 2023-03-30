@@ -1,5 +1,3 @@
-setwd("/Users/mwen/Documents/Dissertation/HIV/HIV1/downsample/")
-
 #load the HIV1 dataset
 #load the HIV2 dataset
 load("../rda/hiv_processed.rda")

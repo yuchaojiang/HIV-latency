@@ -222,7 +222,7 @@ library(motifmatchr)
 library(BSgenome.Hsapiens.UCSC.hg38)
 library(DescTools)
 library(destin)
-setwd("/Users/mwen/Documents/Dissertation/HIV/rda/")
+
 
 
 # Visualization by UMAP

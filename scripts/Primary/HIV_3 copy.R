@@ -21,8 +21,6 @@ library(olsrr)
 library(pdftools)
 library(car)
 
-setwd("/Users/mwen/Documents/Dissertation/HIV/HIV2/")
-
 load("hiv_chromvar.rda")
 hiv 
 # 48673 features across 61708 samples within 4 assays 
@@ -1267,7 +1265,6 @@ DefaultAssay(hiv) <- "ATAC"
 dev.off()
 
 
-setwd("/Users/mwen/Documents/Dissertation/HIV/HIV2")
 pdf("pdf/three/gata3.pdf", width = 10, height = 10)
 par(mfrow=c(2,2))
 TF.name='GATA3'
